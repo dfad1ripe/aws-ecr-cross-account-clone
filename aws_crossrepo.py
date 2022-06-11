@@ -163,12 +163,7 @@ for repo in repoListSrc:
       # Some images might have no tags
       try:
         tag = image['imageTags'][0]
-      except NameError:
-        info('  Found image: ' + image['repositoryName'] + ':' + image['imagePushedAt'])
-        if not args.ignore_tags:
-           info('Image is not tagged, skipping')
-           continue
-      except KeyError:
+      except (NameError, KeyError) as e:
         info('  Found image: ' + image['repositoryName'] + ':' + image['imagePushedAt'])
         if not args.ignore_tags:
            info('Image is not tagged, skipping')
@@ -188,10 +183,7 @@ for repo in repoListSrc:
       if args.require_scan:
         try:
           scanStatus = image['imageScanStatus']['status']
-        except NameError:
-          info('    Image is not scanned, skipping')
-          continue
-        except KeyError:
+        except (NameError, KeyError) as e:
           info('    Image is not scanned, skipping')
           continue
         info('    Image is scanned')
@@ -204,9 +196,7 @@ info('Number of images to sync: ' + str(len(imagesToSync)))
 for image in imagesToSync:
   try:
     tag = image['imageTags'][0]
-  except NameError:
-    info('  ' + image['repositoryName'] + ':' + image['imagePushedAt'])
-  except KeyError:
+  except (NameError, KeyError) as e:
     info('  ' + image['repositoryName'] + ':' + image['imagePushedAt'])
   info('  ' + image['repositoryName'] + ':' + tag)
 
