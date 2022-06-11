@@ -59,20 +59,25 @@ where the values in angle brackets are your actual access credentials for corres
 
 ## Syntax ##
 
-usage: aws_crossrepo.py [-h] [--days DAYS] [--ignore-tags [IGNORE_TAGS]] [--require-scan [REQUIRE_SCAN]] src_profile src_region dst_profile dst_region
+Usage:
 
-AWS ECR smart synchronization tool. See https://github.com/dfad1ripe/aws-crossrepo for the details.
+    aws_crossrepo.py [-h] [--days DAYS] [--ignore-tags] [--require-scan] src_profile src_region dst_profile dst_region
 
-positional arguments:
+Positional arguments:
 
     src_profile           Source AWS profile, as defined in ~/.aws/config
     src_region            Source AWS region
     dst_profile           Destination AWS profile, as defined in ~/.aws/config
     dst_region            Destination AWS region
 
-optional arguments:
+Optional arguments:
 
-    -h, --help                                          show this help message and exit
-    --days DAYS, -d DAYS                                How recent images to synchronize, in calendar days
-    --ignore-tags [IGNORE_TAGS], -t [IGNORE_TAGS]       Clone even not tagged images (default False)
-    --require-scan [REQUIRE_SCAN], -s [REQUIRE_SCAN]    Clone only scanned images (default False)
+    -h, --help              Show the help message and exit
+    --days DAYS, -d DAYS    How recent images to synchronize, in calendar days (default 30)
+    --ignore-tags, -t       Clone even not tagged images (default False)
+    --require-scan, -s      Clone only scanned images (default False)
+
+Example:
+
+    aws_crossrepo.py src us-east-1 dst us-east-2 --days 14 --require-scan
+
