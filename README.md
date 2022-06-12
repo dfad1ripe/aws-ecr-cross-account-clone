@@ -25,7 +25,7 @@ Particularly, in the 'source' repository, at least the following actions should 
 - ecr:ListImages
 - ecr:GetRegistryScanningConfiguration
 
-Correspondingly, in the 'target' repository, at least the following actions should be allowed by IAM policies for the actual IAM user or role:
+Correspondingly, in the 'destination' repository, at least the following actions should be allowed by IAM policies for the actual IAM user or role:
 
 - ecr:DescribeImages
 - ecr:DescribeRepositories
@@ -36,10 +36,17 @@ Correspondingly, in the 'target' repository, at least the following actions shou
 - ecr:CompleteLayerUpload
 - ecr:BatchCheckLayerAvailability
 
-Additionally, identity-based IAM policy for the actual IAM user or role in both accounts should allow the following actions for "*" resource:
+Additionally, identity-based IAM policy for the actual IAM user or role should allow the following actions for "*" resource:
+
+In 'source' AWS account:
 
 - ecr:GetAuthorizationToken (necessary to run `docker login`)
 - ecr:DescribeImageScanFindings (necessary to retrieve scan results)
+- ecr:GetBatchImage
+
+In 'destination' AWS account:
+
+- ecr:GetAuthorizationToken (necessary to run `docker login`)
 
 
 Your `~/.aws/credentials` file should define separate profiles for both 'source' and 'destination' AWS accounts. Example of setup:
