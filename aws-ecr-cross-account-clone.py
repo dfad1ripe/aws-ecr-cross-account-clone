@@ -168,116 +168,84 @@ def getECRCredentials(profile, region):
     debug(stdout)
     return stdout.rstrip()
 
-    
+
+# Multipurpose docker runner
+# Allows to run `docker <command> <any arguments>`
+# arguments:
+#   - command for docker
+#   - arguments for docker command
+# returns subprocess stdout
+def dockerRunner(command, arguments):
+  cmd = 'docker ' + command + ' ' + arguments
+  debug('Running command: ' + cmd)
+  p = subprocess.Popen(cmd.split(),
+                       stdout = subprocess.PIPE,
+                       stderr = subprocess.PIPE,
+                       #stdin  = subprocess.PIPE,
+                       universal_newlines = True)
+  stdout, stderr = p.communicate()
+
+  if p.returncode > 0:
+    # Shell error happened
+    print(stderr)
+    exit(errDocker)
+  else:
+    return stdout
+  
+
 # Docker login
+# arguments:
+#   - FQDN for ECR registry
+#   - password
+# returns: nothing, underlying docker runner exits on docker failure
 def dockerLogin(FQDN, password):
   info('Docker login to: ' + FQDN)
   debug('  using password: ' + password)
-  cmd = 'docker login --username AWS --password ' + password + ' ' + FQDN
+  r = dockerRunner('login', '--username AWS --password ' + password + ' ' + FQDN)
+  print(r)
 
-  debug('Running command: ' + cmd)
-  p = subprocess.Popen(cmd.split(),
-                       stdout = subprocess.PIPE,
-                       stderr = subprocess.PIPE,
-                       #stdin  = subprocess.PIPE,
-                       universal_newlines = True)
-  stdout, stderr = p.communicate()
-
-  if p.returncode > 0:
-    # Shell error happened
-    print(stderr)
-    exit(errDocker)
-  else:
-    print(stdout)
-    
+  
 # Docker pull image
+# arguments:
+#   - full image name
+# returns: nothing, underlying docker runner exits on docker failure
 def dockerPull(imageName):
   info('Pulling image: ' + imageName)
-  cmd = 'docker pull ' + imageName
-
-  debug('Running command: ' + cmd)
-  p = subprocess.Popen(cmd.split(),
-                       stdout = subprocess.PIPE,
-                       stderr = subprocess.PIPE,
-                       #stdin  = subprocess.PIPE,
-                       universal_newlines = True)
-  stdout, stderr = p.communicate()
-
-  if p.returncode > 0:
-    # Shell error happened
-    print(stderr)
-    exit(errDocker)
-  else:
-    print(stdout)
+  r = dockerRunner('pull', imageName)
+  print(r)
 
     
 # Docker tag image
+# arguments:
+#   - full image name
+#   - new full image name
+# returns: nothing, underlying docker runner exits on docker failure
 def dockerTag(imageName, newImageName):
   info('Tagging image: ' + imageName + ' as ' + newImageName)
-  cmd = 'docker tag ' + imageName + ' ' + newImageName
-
-  debug('Running command: ' + cmd)
-  p = subprocess.Popen(cmd.split(),
-                       stdout = subprocess.PIPE,
-                       stderr = subprocess.PIPE,
-                       #stdin  = subprocess.PIPE,
-                       universal_newlines = True)
-  stdout, stderr = p.communicate()
-
-  if p.returncode > 0:
-    # Shell error happened
-    print(stderr)
-    exit(errDocker)
-  else:
-    print(stdout)
+  r = dockerRunner('tag', imageName + ' ' + newImageName)
+  print(r)
     
     
 # Docker push image
 # arguments:
 #   - full image name
-# returns: nothing
+# returns: nothing, underlying docker runner exits on docker failure
 def dockerPush(imageName):
   info('Pushing image: ' + imageName)
   cmd = 'docker push ' + imageName
-
-  debug('Running command: ' + cmd)
-  p = subprocess.Popen(cmd.split(),
-                       stdout = subprocess.PIPE,
-                       stderr = subprocess.PIPE,
-                       #stdin  = subprocess.PIPE,
-                       universal_newlines = True)
-  stdout, stderr = p.communicate()
-
-  if p.returncode > 0:
-    # Shell error happened
-    print(stderr)
-    exit(errDocker)
-  else:
-    print(stdout)
+  r = dockerRunner('push', imageName)
+  print(r)
 
 
 # Docker remove local image
 # arguments:
 #   - full image name
-# returns: nothing
+# returns: nothing, underlying docker runner exits on docker failure
 def dockerRmi(imageName):
   info('Removing image: ' + imageName)
   cmd = 'docker rmi ' + imageName
-
-  debug('Running command: ' + cmd)
-  p = subprocess.Popen(cmd.split(),
-                       stdout = subprocess.PIPE,
-                       stderr = subprocess.PIPE,
-                       #stdin  = subprocess.PIPE,
-                       universal_newlines = True)
-  stdout, stderr = p.communicate()
-
-  if p.returncode > 0:
-    # Shell error happened
-    print(stderr)
-    exit(errDocker)
-  else:
-    print(stdout)   
+  r = dockerRunner('rmi', imageName)
+  print(r)
 
     
 # Build ECR FQDN for profile
