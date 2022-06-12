@@ -68,7 +68,7 @@ where the values in angle brackets are your actual access credentials for corres
 
 Usage:
 
-    aws-ecr-cross-account-clone.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--ignore-tags] [--require-scan]
+    aws-ecr-cross-account-clone.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--require-scan]
 
 Positional arguments:
 
@@ -81,7 +81,6 @@ Optional arguments:
 
     -h, --help              Show the help message and exit
     --days DAYS, -d DAYS    How recent images to synchronize, in calendar days (default 30)
-    --ignore-tags, -t       Clone even not tagged images (default False)
     --require-scan, -s      Clone only scanned images (default False)
 
 Example:

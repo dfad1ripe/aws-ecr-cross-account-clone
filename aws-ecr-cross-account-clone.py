@@ -233,6 +233,9 @@ def dockerTag(imageName, newImageName):
     
     
 # Docker push image
+# arguments:
+#   - full image name
+# returns: nothing
 def dockerPush(imageName):
   info('Pushing image: ' + imageName)
   cmd = 'docker push ' + imageName
@@ -251,7 +254,31 @@ def dockerPush(imageName):
     exit(errDocker)
   else:
     print(stdout)
-    
+
+
+# Docker remove local image
+# arguments:
+#   - full image name
+# returns: nothing
+def dockerRmi(imageName):
+  info('Removing image: ' + imageName)
+  cmd = 'docker rmi ' + imageName
+
+  debug('Running command: ' + cmd)
+  p = subprocess.Popen(cmd.split(),
+                       stdout = subprocess.PIPE,
+                       stderr = subprocess.PIPE,
+                       #stdin  = subprocess.PIPE,
+                       universal_newlines = True)
+  stdout, stderr = p.communicate()
+
+  if p.returncode > 0:
+    # Shell error happened
+    print(stderr)
+    exit(errDocker)
+  else:
+    print(stdout)   
+
     
 # Build ECR FQDN for profile
 # arguments:
@@ -358,7 +385,6 @@ parser.add_argument('src_region', type=str, help='Source AWS region')
 parser.add_argument('dst_profile', type=str, help='Destination AWS profile, as defined in ~/.aws/config')
 parser.add_argument('dst_region', type=str, help='Destination AWS region')
 parser.add_argument('--days', '-d', type=int, default=30, help='How recent images to synchronize, in calendar days')
-parser.add_argument('--ignore-tags', '-t', type=bool, nargs='?', default=False, const=True, help='Clone even not tagged images (default False)')
 parser.add_argument('--require-scan', '-s', type=bool, nargs='?', default=False, const=True, help='Clone only scanned images (default False)')
 args = parser.parse_args()
 
@@ -407,9 +433,8 @@ for repo in repoListSrc:
         tag = image['imageTags'][0]
       except (NameError, KeyError) as e:
         info('  Found image: ' + image['repositoryName'] + ':' + image['imagePushedAt'])
-        if not args.ignore_tags:
-           info('Image is not tagged, skipping')
-           continue
+        info('    Image is not tagged, skipping')
+        continue
         
       info('  Found image: ' + image['repositoryName'] + ':' + tag)
 
@@ -433,8 +458,16 @@ for repo in repoListSrc:
 
       imagesToSync.append(image)
 
+
 info('')
-info('Number of images to sync: ' + str(len(imagesToSync)))
+
+# If there is nothing to sync - report and exit
+
+if len(imagesToSync) == 0:
+  print('No images satisfy the given rules. Nothing to synchronize.')
+  exit(0)
+
+info('Number of images to synchronize: ' + str(len(imagesToSync)))
 for image in imagesToSync:
   try:
     tag = image['imageTags'][0]
@@ -608,6 +641,8 @@ class pushPullThread(threading.Thread):
     dockerTag(self.imageName, fqdnDst + '/' + self.imageName)
     dockerPush(fqdnDst + '/' + self.imageName)
     imagesPushed = imagesPushed + 1
+    dockerRmi(fqdnSrc + '/' + self.imageName)
+    dockerRmi(fqdnDst + '/' + self.imageName)
     debug('Exiting thread ' + self.name)
 
 

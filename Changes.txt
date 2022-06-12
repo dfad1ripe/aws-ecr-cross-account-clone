@@ -1,0 +1,6 @@
+-> Version 1.01, 2022-06-12
+~ Fixed code for processing untagged images, described proper approach to deal with untagged images in Project Wiki: https://github.com/dfad1ripe/aws-ecr-cross-account-clone/wiki/Working-with-untagged-images-in-ECR
++ Processed images are now removed after being pushed, not wasting disk space.
+
+Version 1.0, 2022-06-11
+Original version being capable to clone images between repositories.
