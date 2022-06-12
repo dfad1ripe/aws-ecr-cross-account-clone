@@ -13,6 +13,7 @@ from datetime import date
 import json
 import re
 import subprocess
+import threading
 
 
 # Default values
@@ -26,6 +27,7 @@ errInvalidArgument  = 1
 errInvalidFile      = 2
 errShell            = 11
 errAWS              = 21
+errDocker           = 22
 
 
 # Debug level printing
@@ -114,9 +116,86 @@ def imageAge(image):
   pushedAt = re.sub("T.*", "", image['imagePushedAt'])
   pushedDate = date.fromisoformat(pushedAt)
   return ((date.today() - pushedDate).days)
+
   
+# Retrieve credentials for ECR repository  
+def getECRCredentials(profile, region):
+  info('Retrieving credentials for: ' + profile + ':' + region)
+  cmd = 'aws ecr get-login-password --region ' + region + ' --profile ' + profile
+
+  debug('Running command: ' + cmd)
+
+  p = subprocess.Popen(cmd.split(),
+                       stdout = subprocess.PIPE,
+                       stderr = subprocess.PIPE,
+                       #stdin  = subprocess.PIPE,
+                       universal_newlines = True)
+  stdout, stderr = p.communicate()
+
+  if p.returncode > 0:
+    # Shell error happened
+    print(stderr)
+    exit(errAWS)
+  else:
+    debug(stdout)
+    return stdout.rstrip()
+
+    
+# Docker login
+def dockerLogin(FQDN, password):
+  info('Docker login to: ' + FQDN)
+  debug('  using password: ' + password)
+  cmd = 'docker login --username AWS --password ' + password + ' ' + FQDN
+
+  debug('Running command: ' + cmd)
+  p = subprocess.Popen(cmd.split(),
+                       stdout = subprocess.PIPE,
+                       stderr = subprocess.PIPE,
+                       #stdin  = subprocess.PIPE,
+                       universal_newlines = True)
+  stdout, stderr = p.communicate()
+
+  if p.returncode > 0:
+    # Shell error happened
+    print(stderr)
+    exit(errDocker)
+  else:
+    print(stdout)
+
+    
+# Build ECR FQDN for profile
+# arguments:
+#   - AWS profile
+#   - AWS region
+# returns: FQDN for ECR in this profile and region
+def buildFQDN(profile, region):
+  info('Generating ECR FQDN for profile: ' + profile)
+  cmd = 'aws ecr describe-registry --profile ' + profile
+
+  debug('Running command: ' + cmd)
+
+  p = subprocess.Popen(cmd.split(),
+                       stdout = subprocess.PIPE,
+                       stderr = subprocess.PIPE,
+                       #stdin  = subprocess.PIPE,
+                       universal_newlines = True)
+  stdout, stderr = p.communicate()
+
+  if p.returncode > 0:
+    # Shell error happened
+    print(stderr)
+    exit(errAWS)
+  else:
+    debug(stdout)
+    
+  # Convert JSON text to a list
+  j = json.loads(stdout)
+  
+  accountId = j['registryId']
+  return str(accountId) + '.dkr.ecr.' + region + '.amazonaws.com'
 
 
+  
 ####################
 # MAIN PROCESS
 #
@@ -202,5 +281,57 @@ for image in imagesToSync:
 
 info('')
       
-print(imagesToSync)
-info('')
+#print(imagesToSync)
+#info('')
+
+# Build FQDN for Dst repo
+fqdnDst = buildFQDN(args.dst_profile, args.dst_region)
+
+# Multithreading execution of docker login
+#
+# Initial structures
+threads = []
+threadsLogged = 0
+
+# Defining thread class
+class loginThread(threading.Thread):
+  def __init__(self, name, profile, region, FQDN):
+    threading.Thread.__init__(self)
+    self.name = name
+    self.profile = profile
+    self.region = region
+    self.FQDN = FQDN
+  def run(self):
+    global threadsLogged
+    debug('Starting thread: ' + self.name)
+    self.creds = getECRCredentials(self.profile, self.region)
+    dockerLogin(self.FQDN, self.creds)
+    threadsLogged = threadsLogged + 1
+    debug('Exiting thread ' + self.name)
+
+# Defining and running threads    
+loginThreadSrc = loginThread('login thread for source repository',
+                             args.src_profile,
+                             args.src_region,
+                             re.sub("\/.*", "", repoListSrc[0]['repositoryUri']))
+loginThreadSrc.start()
+threads.append(loginThreadSrc)
+
+loginThreadDst = loginThread('login thread for destination repository',
+                             args.dst_profile,
+                             args.dst_region,
+                             fqdnDst)
+loginThreadDst.start()
+threads.append(loginThreadDst)
+
+# Waiting for all threads to complete
+for t in threads:
+    t.join()
+debug('Multithreading part complete')
+
+# Check if docker login was successful for both repositories
+print('Successful login happened in ' + str(threadsLogged) + ' threads of 2')
+if threadsLogged < 2:
+  print('Docker was not able to login. Please review the messages below and fix the error.')
+  exit(errDocker)
+  

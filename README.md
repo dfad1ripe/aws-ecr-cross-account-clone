@@ -61,7 +61,7 @@ where the values in angle brackets are your actual access credentials for corres
 
 Usage:
 
-    aws_crossrepo.py [-h] [--days DAYS] [--ignore-tags] [--require-scan] src_profile src_region dst_profile dst_region
+    aws_crossrepo.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--ignore-tags] [--require-scan]
 
 Positional arguments:
 
