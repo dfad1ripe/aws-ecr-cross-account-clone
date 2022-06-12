@@ -303,9 +303,52 @@ def repoExists(repositoryList, repositoryName):
   return exists
 
 
+# Describe image
+# arguments:
+#   - AWS profile
+#   - AWS region
+#   - Repository name
+#   - Image tag
+# returns: What AWS returns as JSON for the image, {} if does not exist
+def describeImage(profile, region, repositoryName, tag):
+  debug('Retrieving metadata for image: ' + profile + ':' + region + ', ' + repositoryName + ':' + tag)
+  cmd = 'aws ecr describe-images --profile ' + profile + ' --repository-name ' + repositoryName
+  debug('Running command: ' + cmd)
+
+  p = subprocess.Popen(cmd.split(),
+                       stdout = subprocess.PIPE,
+                       stderr = subprocess.PIPE,
+                       #stdin  = subprocess.PIPE,
+                       universal_newlines = True)
+  stdout, stderr = p.communicate()
+
+  if p.returncode > 0:
+    # Shell error happened
+    print(stderr)
+    exit(errAWS)
+  else:
+    debug(stdout)
+    
+  # Convert JSON text to a list
+  images = json.loads(stdout)['imageDetails']
+  for image in images:
+    if image['imageTags'][0] == tag:
+      debug('Found the image:')
+      debug(image)
+      return image
+  
+  # If such image is not found
+  return {}
+  
+
   
 ####################
 # MAIN PROCESS
+#
+
+
+####################
+# PART 1. Read and process arguments.
 #
 
 # Read CLI arguments
@@ -331,6 +374,10 @@ if args.days < 1:
   exit(errInvalidArgument)
 
 debug('')
+
+####################
+# PART 2. Read ECR data and decide what to copy.
+#
 
 # Get repository list for Source repo
 info('Retrieving list of repositories in ' + args.src_profile + ':' + args.src_region)
@@ -396,7 +443,11 @@ for image in imagesToSync:
   info('  ' + image['repositoryName'] + ':' + tag)
 
 info('')
+
       
+####################
+# PART 3. Create missed repositories
+#
 
 # Create repositories that exist in Source and don't exist in Destination
 reposToCreate = []
@@ -447,16 +498,17 @@ if len(reposToCreate) > 0:
     t.join()
   debug('Multithreading part complete')
 
-  # Check if docker login was successful for both repositories
+  # Check if all missed repositories were created successfully
   info('Successfuly created ' + str(reposCreated) + ' repositories of ' + str(len(reposToCreate)))
   if reposCreated < len(reposToCreate):
     print('Could not create all repositories. Please review the messages below and fix the error.')
     exit(errAWS)
   info('')
 
-
-
-
+  
+####################
+# PART 4. Docker login to both repositories
+#
 
 # Build FQDN for repositories
 fqdnSrc = re.sub("\/.*", "", repoListSrc[0]['repositoryUri'])
@@ -511,17 +563,75 @@ if threadsLogged < 2:
   exit(errDocker)
 
 
+####################
+# PART 5. Cloning images with docker
+#
+
+imagesToSyncFinal = []
+for srcImage in imagesToSync:
+  shouldBeCopied = False
+  # Checking if sush image exists at destination
+  info('Checking if the image ' + srcImage['repositoryName'] + ':' + srcImage['imageTags'][0] + ' exists at destination and has same checksum')
+  dstImage = describeImage(args.dst_profile, args.dst_region, srcImage['repositoryName'], srcImage['imageTags'][0])
+  
+  try:
+    srcDigest = srcImage['imageDigest']
+    dstDigest = dstImage['imageDigest']
+    if srcDigest != dstDigest:
+      shouldBeCopied = True
+  except KeyError:
+    # This happens when there is no dstImage['imageDigest'], meaning no such image
+    shouldBeCopied = True
+  
+  if shouldBeCopied:
+    info('  Image does not exist, or has different checksum, and should be copied')
+    imagesToSyncFinal.append(srcImage)
+  else:
+    info('  Image exists and has the same checksum, skipping')
+info('')
+imagesToSync = imagesToSyncFinal
+
+imagesPushed = 0
+
+# Defining thread class
+class pushPullThread(threading.Thread):
+  def __init__(self, name, imageName):
+    threading.Thread.__init__(self)
+    self.name = name
+    self.imageName = imageName
+  def run(self):
+    global fqdnSrc
+    global fqdnDst
+    global imagesPushed
+    debug('Starting thread: ' + self.name)
+    dockerPull(fqdnSrc + '/' + self.imageName)
+    dockerTag(self.imageName, fqdnDst + '/' + self.imageName)
+    dockerPush(fqdnDst + '/' + self.imageName)
+    imagesPushed = imagesPushed + 1
+    debug('Exiting thread ' + self.name)
+
+
+# Defining and running threads
+threads = []
+for image in imagesToSync:
+  imageName = image['repositoryName'] + ':' + image['imageTags'][0]
+  pushPullRunner = pushPullThread('push-pull thread for image ' + imageName, imageName)
+  pushPullRunner.start()
+  threads.append(pushPullRunner)
+
+
+# Waiting for all threads to complete
+for t in threads:
+    t.join()
+debug('Multithreading part complete')
+
+# Check if all images were pushed successfully
+info('Successfuly pushed ' + str(imagesPushed) + ' images of ' + str(len(imagesToSync)))
+if imagesPushed < len(imagesToSync):
+  print('Could not push all images. Please review the messages below and fix the error.')
+  exit(errAWS)
+else:
+  print('All images were synchronized')
+print('')
 
   
-#
-# Attempt to pull-tag-push single image
-#
-
-image = imagesToSync[0]
-imageName = image['repositoryName'] + ':' + image['imageTags'][0]
-dockerPull(fqdnSrc + '/' + imageName)
-dockerTag(imageName, fqdnDst + '/' + imageName)
-
-# Does repository exist at Destination? If not, we need to create it.
-
-dockerPush(fqdnDst + '/' + imageName)
