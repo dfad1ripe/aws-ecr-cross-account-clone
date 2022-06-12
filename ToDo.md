@@ -11,3 +11,11 @@ These should be skipped anyway. Currently, they are added to the clone list but 
 ## Report which images were synced and which were failed ##
 
 Currently, only numbers are reported
+
+## Delete local copies of images after cloning ##
+
+Currently, local copies of all images are kept on the host. This might cause filesystem out of space issues with time, or when running on hosts with low disk space. Local copies are to be removed when an image is synced.
+
+## Limit number of threads running simultaneously ##
+
+If we have dozens, or hundreds of images to clone, we should not start as many threads in parallel. Instead, we should limit the number of threads, adding new threads when old threads complete and join.
