@@ -61,7 +61,7 @@ where the values in angle brackets are your actual access credentials for corres
 
 Usage:
 
-    aws_crossrepo.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--ignore-tags] [--require-scan]
+    aws-ecr-cross-account-clone.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--ignore-tags] [--require-scan]
 
 Positional arguments:
 
@@ -79,5 +79,5 @@ Optional arguments:
 
 Example:
 
-    aws_crossrepo.py src us-east-1 dst us-east-2 --days 14 --require-scan
+    aws-ecr-cross-account-clone.py src us-east-1 dst us-east-2 --days 14 --require-scan
 
