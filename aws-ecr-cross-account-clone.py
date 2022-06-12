@@ -4,7 +4,7 @@
 # AWS ECR smart synchronization tool
 #
 # (C) Dmytro Fadyeyenko
-# GitHub: https://github.com/dfad1ripe/aws-crossrepo
+# GitHub: https://github.com/dfad1ripe/aws-ecr-cross-account-clone
 #
 ####################################################################
 
