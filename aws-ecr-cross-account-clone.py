@@ -19,8 +19,9 @@ import threading
 # Default values
 #
 # Debug mode output is allowed - not for production usage
-DEBUG = False
-INFO  = True
+DEBUG      = False
+DEBUG_AUTH = False
+INFO       = True
 
 # Exit codes
 errInvalidArgument  = 1
@@ -165,7 +166,10 @@ def getECRCredentials(profile, region):
     print(stderr)
     exit(errAWS)
   else:
-    debug(stdout)
+    if DEBUG_AUTH:
+      debug(stdout)
+    else:
+      debug('ECR authorization token was retrieved as <HIDDEN>')
     return stdout.rstrip()
 
 
@@ -200,8 +204,29 @@ def dockerRunner(command, arguments):
 # returns: nothing, underlying docker runner exits on docker failure
 def dockerLogin(FQDN, password):
   info('Docker login to: ' + FQDN)
-  debug('  using password: ' + password)
-  r = dockerRunner('login', '--username AWS --password ' + password + ' ' + FQDN)
+  if DEBUG_AUTH:
+    debug('  using password: ' + password)
+  else:
+    debug('  using password: <HIDDEN>')
+
+  if DEBUG_AUTH:
+    r = dockerRunner('login', '--username AWS --password ' + password + ' ' + FQDN)
+  else:
+    cmd = 'docker login --username AWS --password ' + password + ' ' + FQDN
+    debug('Running command: docker login --username AWS --password <HIDDEN> ' + FQDN)
+    p = subprocess.Popen(cmd.split(),
+                         stdout = subprocess.PIPE,
+                         stderr = subprocess.PIPE,
+                         universal_newlines = True)
+    stdout, stderr = p.communicate()
+
+    if p.returncode > 0:
+      # Shell error happened
+      print(stderr)
+      exit(errDocker)
+    else:
+      r = stdout
+  
   print(r)
 
   
@@ -354,6 +379,9 @@ parser.add_argument('dst_profile', type=str, help='Destination AWS profile, as d
 parser.add_argument('dst_region', type=str, help='Destination AWS region')
 parser.add_argument('--days', '-d', type=int, default=30, help='How recent images to synchronize, in calendar days')
 parser.add_argument('--require-scan', '-s', type=bool, nargs='?', default=False, const=True, help='Clone only scanned images (default False)')
+parser.add_argument('--verbose', '-v', type=bool, nargs='?', default=False, const=True, help='More verbosity (default False)')
+parser.add_argument('--verbose-auth', '-vv', type=bool, nargs='?', default=False, const=True, help='Verbose authentication data (default False)')
+
 args = parser.parse_args()
 
 # Validating arguments
@@ -367,6 +395,14 @@ if args.days < 1:
   print('Invalid --days value: should be 1 or more')
   exit(errInvalidArgument)
 
+if args.verbose:
+  DEBUG = True
+
+if args.verbose_auth:
+  DEBUG = True
+  DEBUG_AUTH = True
+
+  
 debug('')
 
 ####################
@@ -593,6 +629,7 @@ info('')
 imagesToSync = imagesToSyncFinal
 
 imagesPushed = 0
+imageNamesPushed = []
 
 # Defining thread class
 class pushPullThread(threading.Thread):
@@ -609,6 +646,7 @@ class pushPullThread(threading.Thread):
     dockerTag(self.imageName, fqdnDst + '/' + self.imageName)
     dockerPush(fqdnDst + '/' + self.imageName)
     imagesPushed = imagesPushed + 1
+    imageNamesPushed.append(self.imageName)
     dockerRmi(fqdnSrc + '/' + self.imageName)
     dockerRmi(fqdnDst + '/' + self.imageName)
     debug('Exiting thread ' + self.name)
@@ -632,6 +670,14 @@ debug('Multithreading part complete')
 info('Successfuly pushed ' + str(imagesPushed) + ' images of ' + str(len(imagesToSync)))
 if imagesPushed < len(imagesToSync):
   print('Could not push all images. Please review the messages below and fix the error.')
+  print('Images pushed successfully:')
+  for imageName in imageNamesPushed:
+    print('  ' + imageName)
+  print('Images not pushed:')
+  for image in imagesToSync:
+    imageName = image['repositoryName'] + ':' + image['imageTags'][0]
+    if imageName not in imageNamesPushed:
+      print('  ' + imageName)  
   exit(errAWS)
 else:
   print('All images were synchronized')

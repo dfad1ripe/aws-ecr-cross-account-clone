@@ -68,7 +68,7 @@ where the values in angle brackets are your actual access credentials for corres
 
 Usage:
 
-    aws-ecr-cross-account-clone.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--require-scan]
+    aws-ecr-cross-account-clone.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--require-scan] [--verbose | --verbose-auth]
 
 Positional arguments:
 
@@ -82,8 +82,14 @@ Optional arguments:
     -h, --help              Show the help message and exit
     --days DAYS, -d DAYS    How recent images to synchronize, in calendar days (default 30)
     --require-scan, -s      Clone only scanned images (default False)
+	--verbose, -v           More verbosity, except sensitive authentication data (default False)
+	--verbose-auth, -vv     More verbosity, including sensitive authentication data (default False)
 
 Example:
 
     aws-ecr-cross-account-clone.py src us-east-1 dst us-east-2 --days 14 --require-scan
 
+Notes about sensitive authentication data:
+
+-  `--verbose` flag enables printing varios debugging information, but hides AWS authorization tokens.
+-  `--verbose-auth` flag enables printing varios debugging information like `--verbose` flag does, including AWS authorization tokens.
