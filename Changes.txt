@@ -1,6 +1,10 @@
--> Version 1.01, 2022-06-12
+-> Version 1.02, 2022-06-17
++ Report which images were synced and which were failed (only if any image failed).
++ New flags: --verbose (-v) and --verbose-auth (-vv) to display debug level data.
+
+Version 1.01, 2022-06-12
 ~ Fixed code for processing untagged images, described proper approach to deal with untagged images in Project Wiki: https://github.com/dfad1ripe/aws-ecr-cross-account-clone/wiki/Working-with-untagged-images-in-ECR
-~ Minor optimization of running docker subprocesses
+~ Minor optimization of running docker subprocesses.
 + Processed images are now removed after being pushed, not wasting disk space.
 
 Version 1.0, 2022-06-11
