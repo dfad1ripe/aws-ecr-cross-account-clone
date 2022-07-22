@@ -68,7 +68,7 @@ where the values in angle brackets are your actual access credentials for corres
 
 Usage:
 
-    aws-ecr-cross-account-clone.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--require-scan] [--verbose | --verbose-auth]
+    aws-ecr-cross-account-clone.py [-h] src_profile src_region dst_profile dst_region [--days DAYS] [--include-repos WHITELIST | --exclude-repos BLACKLIST] [--require-scan] [--verbose | --verbose-auth]
 
 Positional arguments:
 
@@ -79,15 +79,22 @@ Positional arguments:
 
 Optional arguments:
 
-    -h, --help              Show the help message and exit
-    --days DAYS, -d DAYS    How recent images to synchronize, in calendar days (default 30)
-    --require-scan, -s      Clone only scanned images (default False)
-	--verbose, -v           More verbosity, except sensitive authentication data (default False)
-	--verbose-auth, -vv     More verbosity, including sensitive authentication data (default False)
+    -h, --help                 Show the help message and exit
+    --days DAYS, -d DAYS       How recent images to synchronize, in calendar days (default 30)
+	--include-repos WHITELIST  Comma-separated white list of repositories to synchronize
+	--exclude-repos BLACKLIST  Comma-separated black list of repositories to exclude from synchronization
+    --require-scan, -s         Clone only scanned images (default False)
+	--verbose, -v              More verbosity, except sensitive authentication data (default False)
+	--verbose-auth, -vv        More verbosity, including sensitive authentication data (default False)
 
 Example:
 
     aws-ecr-cross-account-clone.py src us-east-1 dst us-east-2 --days 14 --require-scan
+
+Notes about whitelisting and blacklisting:
+
+-  Arguments `--include-repos` and `--exclude-repos` are mutually exclusive.
+-  If either `--include-repos` or `--exclude-repos` argument refers a repository name that does not exist in source ECR, such name is ignored, and no error is arisen.
 
 Notes about sensitive authentication data:
 
