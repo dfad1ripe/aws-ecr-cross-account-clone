@@ -381,6 +381,10 @@ parser.add_argument('--days', '-d', type=int, default=30, help='How recent image
 parser.add_argument('--require-scan', '-s', type=bool, nargs='?', default=False, const=True, help='Clone only scanned images (default False)')
 parser.add_argument('--verbose', '-v', type=bool, nargs='?', default=False, const=True, help='More verbosity (default False)')
 parser.add_argument('--verbose-auth', '-vv', type=bool, nargs='?', default=False, const=True, help='Verbose authentication data (default False)')
+# Mutually exclusive arguments --exclude-repos and --include-repos
+bwListGroup = parser.add_mutually_exclusive_group()
+bwListGroup.add_argument('--exclude-repos', type=str, nargs='?', help='Comma-separated list of repositories to exclude from cloning ("black list")')
+bwListGroup.add_argument('--include-repos', type=str, nargs='?', help='Comma-separated list of repositories to include to cloning ("white list")')
 
 args = parser.parse_args()
 
@@ -420,6 +424,31 @@ info('Retrieving list of repositories in ' + args.dst_profile + ':' + args.dst_r
 repoListDst = getRepos(args.dst_profile, args.dst_region)
 debug(repoListDst)
 info('')
+
+if args.exclude_repos:
+  # No need to try-catch here, as it would convert any bad syntax to a string
+  repoListExclude = args.exclude_repos.split(',')
+  for repoExclude in repoListExclude:
+    validate(repoExclude, "^[a-zA-Z0-9\-\_]+$", 'Invalid repository name: ' + repoExclude, errInvalidArgument)
+    for index,repo in enumerate(repoListSrc):
+      if repo['repositoryName'] == repoExclude:
+        debug('Repository ' + repoExclude + ' was excluded from cloning')
+        repoListSrc.pop(index)
+    
+  
+if args.include_repos:
+  repoWhiteListSrc = []
+  # No need to try-catch here, as it would convert any bad syntax to a string
+  repoListInclude = args.include_repos.split(',')
+  for repoInclude in repoListInclude:
+    validate(repoInclude, "^[a-zA-Z0-9\-\_]+$", 'Invalid repository name: ' + repoInclude, errInvalidArgument)
+    for index,repo in enumerate(repoListSrc):
+      if repo['repositoryName'] == repoInclude:
+        debug('Repository ' + repo['repositoryName'] + ' is included to cloning')
+        repoWhiteListSrc.append(repo)
+      else:
+        debug('Repository ' + repo['repositoryName'] + ' was excluded from cloning')
+  repoListSrc = repoWhiteListSrc
 
 
 info('Retrieving list of images')
